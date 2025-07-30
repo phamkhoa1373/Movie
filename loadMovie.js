@@ -93,10 +93,18 @@ async function loadMovie(page) {
         // Thêm event listener để cache chi tiết phim khi click
         a.addEventListener('click', function () {
             cacheMovieDetail(item.slug);
+            localStorage.setItem('pendingToastMovie', item.name);
+
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification("Phim đã được cache", {
+                    body: item.name,
+                    icon: "./asset/40MovieLogos_28-removebg-preview.png"
+                });
+            }
         });
 
         const img = document.createElement('img');
-        img.src = 'asset/Loading_icon.gif';
+        img.src = 'asset/soft-clear-blurred-background_1034-596.avif';
 
         const realImg = new Image();
         realImg.src = imgUrl + item.poster_url;
@@ -163,32 +171,26 @@ async function cacheMovieDetail(slug) {
                     type: 'CACHE_DETAIL',
                     slug: slug
                 });
-
-                // Gọi API để lấy tên phim và hiển thị toast
-                const data = await fetchData(null, slug);
-                if (data.movie.name) {
-                    showToast(`Đã cache phim: ${data.movie.name}`);
-                }
             }
         } catch (error) {
-            console.error('Error caching movie detail:', error);
+            console.error('Lỗi gửi message cache detail:', error);
         }
     }
 }
+
 
 async function loadDetailMovie() {
     const skeletonDiv = document.createElement('div');
     skeletonDiv.className = 'skeleton-detail-container';
     skeletonDiv.innerHTML = `
-            <div class="placeholder content"></div>
-            <div class="detail-info">
-                <div class="placeholder title" style="width: 80%;"></div>
-                <div class="placeholder title" style="width: 30%;"></div>
-                <div class="placeholder title" style="width: 70%;"></div>
-                <div class="placeholder title" style="width: 20%;"></div>
-            </div>
-
-        `;
+        <div class="placeholder content"></div>
+        <div class="detail-info">
+            <div class="placeholder title" style="width: 80%;"></div>
+            <div class="placeholder title" style="width: 30%;"></div>
+            <div class="placeholder title" style="width: 70%;"></div>
+            <div class="placeholder title" style="width: 20%;"></div>
+        </div>
+    `;
     detailContainer.appendChild(skeletonDiv);
 
     const data = await fetchData(null, movieSlug);
@@ -198,10 +200,23 @@ async function loadDetailMovie() {
 
     const div = document.createElement('div');
     div.className = 'detail-container';
+
+    // Tạo ảnh ban đầu là ảnh blur
+    const img = document.createElement('img');
+    img.src = './asset/soft-clear-blurred-background_1034-596.avif';
+    img.alt = data.movie.name;
+    img.className = 'progressive-img';
+
+    // Tạo ảnh thật
+    const realImg = new Image();
+    realImg.src = data.movie.poster_url;
+    realImg.onload = () => {
+        img.src = realImg.src;
+        img.classList.add('loaded'); // để xử lý hiệu ứng
+    };
+
     div.innerHTML = `
-        <div class="detail-poster">
-            <img src="${data.movie.poster_url}" alt="">
-        </div>
+        <div class="detail-poster"></div>
         <div class="detail-info">
             <h2>${data.movie.name}</h2>
             <p><strong>Năm:</strong> ${data.movie.year}</p>
@@ -209,9 +224,12 @@ async function loadDetailMovie() {
             <p><strong>Thời lượng:</strong> ${data.movie.time}</p>
         </div>
     `;
+    div.querySelector('.detail-poster').appendChild(img);
+
     fragment.appendChild(div);
     detailContainer.appendChild(fragment);
 }
+
 
 if (btnToTop) {
     btnToTop.addEventListener("click", function () {
@@ -256,18 +274,6 @@ function debounce(fn, ms) {
     }
 }
 
-function showToast(message) {
-    const toast = document.getElementById('cache-toast');
-    if (!toast) return;
-    toast.textContent = message;
-    toast.classList.add('show');
-
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
-}
-
-
 if (!isDetailPage) {
     if (window.scrollY == 0) {
         console.time('loadMovie');
@@ -287,9 +293,3 @@ if (!isDetailPage) {
 } else {
     loadDetailMovie();
 }
-
-
-
-
-
-
