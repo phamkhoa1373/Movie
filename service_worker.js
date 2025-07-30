@@ -53,7 +53,7 @@ self.addEventListener('fetch', event => {
                 })
         );
     }
-    // Cache API chi tiết phim khi đã được xem trước đó
+    // Chỉ sử dụng cache cho API chi tiết phim, không tự động cache
     else if (url.startsWith(apiDetail)) {
         event.respondWith(
             caches.match(event.request)
@@ -61,11 +61,7 @@ self.addEventListener('fetch', event => {
                     if (cachedResponse) {
                         return cachedResponse;
                     }
-                    return fetch(event.request)
-                        .then(response => {
-                            // Không cache response mới, chỉ sử dụng cache có sẵn
-                            return response;
-                        });
+                    return fetch(event.request);
                 })
         );
     }

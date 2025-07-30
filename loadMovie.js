@@ -112,9 +112,6 @@ async function loadMovie(page) {
         `;
         a.querySelector('.movie-poster').appendChild(img);
         fragment.append(a);
-
-        // Cache dữ liệu chi tiết phim
-        fetch(`https://ophim1.com/phim/${item.slug}`).catch(() => { });
     })
     container.appendChild(fragment);
 }
@@ -190,11 +187,6 @@ async function loadDetailMovie() {
 
     const data = await fetchData(null, movieSlug);
     skeletonDiv.remove();
-
-    // Cache chi tiết phim khi load trang chi tiết
-    if (data && movieSlug) {
-        await cacheMovieDetail(movieSlug);
-    }
 
     const fragment = document.createDocumentFragment();
 
