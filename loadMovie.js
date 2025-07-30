@@ -163,6 +163,12 @@ async function cacheMovieDetail(slug) {
                     type: 'CACHE_DETAIL',
                     slug: slug
                 });
+
+                // Gọi API để lấy tên phim và hiển thị toast
+                const data = await fetchData(null, slug);
+                if (data.movie.name) {
+                    showToast(`Đã cache phim: ${data.movie.name}`);
+                }
             }
         } catch (error) {
             console.error('Error caching movie detail:', error);
@@ -249,6 +255,18 @@ function debounce(fn, ms) {
         }, ms)
     }
 }
+
+function showToast(message) {
+    const toast = document.getElementById('cache-toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('show');
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
 
 if (!isDetailPage) {
     if (window.scrollY == 0) {
