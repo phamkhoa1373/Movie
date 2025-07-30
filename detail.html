@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Detail</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-container">
+            <div class="logo">
+                <img src="./asset/40MovieLogos_28-removebg-preview.png" alt="logo">
+            </div>
+            <div class="menu">
+                <ul>
+                    <li class="active"><a href="index.html">Home</a></li>
+                    <li>Movies</li>
+                    <li>TV Shows</li>
+                    <li>Anime</li>
+                    <li>About</li>
+                </ul>
+            </div>
+            <div class="search-bar">
+                <input type="text" placeholder="Search..." id="search-input">
+                <ul id="search-suggestions" class="search-suggestions">
+                </ul>
+            </div>
+            <div class="menu-toggle" id="menu-toggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+    <div class="container" id="detail-movie">
+
+    </div>
+
+    <script src="https://unpkg.com/incremental-dom/dist/incremental-dom.js"></script>
+    <script src="loadMovie.js"></script>
+</body>
+
+</html>

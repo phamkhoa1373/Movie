@@ -1,0 +1,44 @@
+{
+    "name": "Infinite Scroll Movies",
+    "short_name": "Movies",
+    "description": "A movie browsing app with infinite scroll",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#007bff",
+    "orientation": "portrait-primary",
+    "dir": "ltr",
+    "scope": "./",
+    "categories": [
+        "entertainment",
+        "movies"
+    ],
+    "lang": "en",
+    "prefer_related_applications": false,
+    "icons": [
+        {
+            "src": "./asset/40MovieLogos_28-removebg-preview.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "./asset/40MovieLogos_28-removebg-preview.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "./asset/40MovieLogos_28-removebg-preview.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "./asset/40MovieLogos_28-removebg-preview.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}

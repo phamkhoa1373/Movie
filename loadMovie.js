@@ -1,0 +1,285 @@
+const url = 'https://ophim1.com/danh-sach/phim-moi-cap-nhat';
+const imgUrl = 'https://img.ophim.live/uploads/movies/';
+const container = document.querySelector('.container');
+const searchInput = document.getElementById('search-input');
+const detailContainer = document.getElementById('detail-movie');
+const params = new URLSearchParams(window.location.search);
+const movieSlug = params.get('slug');
+const btnToTop = document.getElementById('btn-toTop');
+
+let currentPage = 1;
+let totalPage = 1;
+let isLoading = true;
+
+const isDetailPage = window.location.pathname.endsWith('detail.html');
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./service_worker.js')
+            .then(function (registration) {
+                console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            }, function (err) {
+                console.log('ServiceWorker registration failed: ', err);
+            });
+    });
+}
+
+async function fetchData(page, movieSlug = null) {
+    try {
+        let apiUrl;
+        if (movieSlug) {
+            apiUrl = `https://ophim1.com/phim/${movieSlug}`;
+        } else {
+            apiUrl = `${url}?page=${page}`;
+        }
+
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const dataJson = await response.json();
+
+        if (!movieSlug && page == 1) {
+            totalPage = dataJson.pagination.totalPages;
+        }
+        return dataJson;
+
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        // Thử lấy từ cache nếu là trang chi tiết
+        if (movieSlug) {
+            try {
+                const apiCache = await caches.open('api-cache-v5');
+                const cached = await apiCache.match(`https://ophim1.com/phim/${movieSlug}`);
+
+                if (cached) return await cached.json();
+            } catch (cacheError) {
+                console.error('Cache error:', cacheError);
+            }
+        }
+    }
+}
+
+async function loadMovie(page) {
+    const skeletons = [];
+    for (let i = 0; i < 12; i++) {
+        const div = document.createElement('div');
+        div.className = 'skeleton-container';
+        div.innerHTML = `
+            <div class="placeholder content"></div>
+            <div class="placeholder title"></div>
+        `;
+        skeletons.push(div);
+    }
+    skeletons.forEach(node => container.appendChild(node));
+
+    const data = await fetchData(page);
+    if (data === null) return;
+
+    skeletons.forEach(node => node.remove());
+
+    let fragment = document.createDocumentFragment();
+    data.items.map(function (item) {
+        const a = document.createElement('a');
+        a.href = `detail.html?slug=${item.slug}`;
+        a.className = "movie";
+
+        // Thêm event listener để cache chi tiết phim khi click
+        a.addEventListener('click', function () {
+            cacheMovieDetail(item.slug);
+        });
+
+        const img = document.createElement('img');
+        img.src = 'asset/Loading_icon.gif';
+
+        const realImg = new Image();
+        realImg.src = imgUrl + item.poster_url;
+        realImg.onload = function () {
+            img.src = realImg.src;
+        };
+
+        a.innerHTML = `
+            <div class="movie-poster" loading="lazy"></div>
+            <div class="movie-name">
+                <p>${item.name}</p>
+            </div>
+        `;
+        a.querySelector('.movie-poster').appendChild(img);
+        fragment.append(a);
+
+        // Cache dữ liệu chi tiết phim
+        fetch(`https://ophim1.com/phim/${item.slug}`).catch(() => { });
+    })
+    container.appendChild(fragment);
+}
+
+if (searchInput) {
+    searchInput.addEventListener('input', debounce(async function () {
+        const data = await fetchData(currentPage);
+        if (data === null) return;
+
+        const suggestions = document.getElementById('search-suggestions');
+        const keyword = this.value.trim().toLowerCase();
+        suggestions.innerHTML = '';
+
+        if (keyword !== '') {
+            const filteredMovies = data.items.filter(movie =>
+                movie.name.toLowerCase().includes(keyword)
+            );
+            filteredMovies.forEach(movie => {
+                const li = document.createElement('li');
+                li.className = 'suggestion-item';
+                li.innerHTML = `
+                            <div class="small-poster">
+                                <img src="${imgUrl}${movie.poster_url}" alt="">
+                            </div>
+                            <div class="small-name">
+                                <p>${movie.name}</p>
+                            </div>
+                        `;
+                li.onclick = function () {
+                    window.location.href = `detail.html?slug=${movie.slug}`;
+                };
+                suggestions.appendChild(li);
+            });
+        }
+
+        document.addEventListener('click', () => {
+            suggestions.innerHTML = '';
+        });
+    }, 200));
+}
+
+// Function để cache chi tiết phim
+async function cacheMovieDetail(slug) {
+    if ('serviceWorker' in navigator) {
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            if (registration.active) {
+                registration.active.postMessage({
+                    type: 'CACHE_DETAIL',
+                    slug: slug
+                });
+            }
+        } catch (error) {
+            console.error('Error caching movie detail:', error);
+        }
+    }
+}
+
+async function loadDetailMovie() {
+    const skeletonDiv = document.createElement('div');
+    skeletonDiv.className = 'skeleton-detail-container';
+    skeletonDiv.innerHTML = `
+            <div class="placeholder content"></div>
+            <div class="detail-info">
+                <div class="placeholder title" style="width: 80%;"></div>
+                <div class="placeholder title" style="width: 30%;"></div>
+                <div class="placeholder title" style="width: 70%;"></div>
+                <div class="placeholder title" style="width: 20%;"></div>
+            </div>
+
+        `;
+    detailContainer.appendChild(skeletonDiv);
+
+    const data = await fetchData(null, movieSlug);
+    skeletonDiv.remove();
+
+    // Cache chi tiết phim khi load trang chi tiết
+    if (data && movieSlug) {
+        await cacheMovieDetail(movieSlug);
+    }
+
+    const fragment = document.createDocumentFragment();
+
+    const div = document.createElement('div');
+    div.className = 'detail-container';
+    div.innerHTML = `
+        <div class="detail-poster">
+            <img src="${data.movie.poster_url}" alt="">
+        </div>
+        <div class="detail-info">
+            <h2>${data.movie.name}</h2>
+            <p><strong>Năm:</strong> ${data.movie.year}</p>
+            <p><strong>Mô tả:</strong> ${data.movie.content}</p>
+            <p><strong>Thời lượng:</strong> ${data.movie.time}</p>
+        </div>
+    `;
+    fragment.appendChild(div);
+    detailContainer.appendChild(fragment);
+}
+
+if (btnToTop) {
+    btnToTop.addEventListener("click", function () {
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+    });
+}
+
+const menuToggle = document.getElementById('menu-toggle');
+const menu = document.querySelector('.menu');
+if (menuToggle && menu) {
+    menuToggle.addEventListener('click', function () {
+        menu.classList.toggle('active');
+    });
+    document.addEventListener('click', function (e) {
+        if (!menu.contains(e.target) && !menuToggle.contains(e.target)) {
+            menu.classList.remove('active');
+        }
+    });
+}
+
+function throttle(func, delay) {
+    let lastExecuted = 0
+    return function (...args) {
+        const now = Date.now()
+        if (now - lastExecuted >= delay) {
+            func.apply(this, args)
+            lastExecuted = now
+        }
+    }
+}
+
+function debounce(fn, ms) {
+    let timer;
+    return function () {
+        const args = arguments;
+        const context = this;
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+            fn.apply(context, args);
+        }, ms)
+    }
+}
+
+if (!isDetailPage) {
+    if (window.scrollY == 0) {
+        console.time('loadMovie');
+        loadMovie(currentPage);
+        console.timeEnd('loadMovie');
+    }
+    window.addEventListener('scroll', debounce(() => {
+        if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 200) {
+            if (currentPage < totalPage) {
+                ++currentPage;
+                console.time('loadMovie');
+                loadMovie(currentPage);
+                console.timeEnd('loadMovie');
+            }
+        }
+    }, 100));
+} else {
+    loadDetailMovie();
+}
+
+
+
+
+
+

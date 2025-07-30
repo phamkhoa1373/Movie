@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Infinite Scroll </title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#007bff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Movies">
+    <meta name="msapplication-TileColor" content="#007bff">
+    <meta name="msapplication-config" content="none">
+
+    <!-- Apple Touch Icons -->
+    <link rel="apple-touch-icon" href="./asset/40MovieLogos_28-removebg-preview.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="./asset/40MovieLogos_28-removebg-preview.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./asset/40MovieLogos_28-removebg-preview.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="./asset/40MovieLogos_28-removebg-preview.png">
+
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+
+<body>
+    <div class="header">
+        <div class="header-container">
+            <div class="logo">
+                <img src="./asset/40MovieLogos_28-removebg-preview.png" alt="logo">
+            </div>
+            <div class="menu">
+                <ul>
+                    <li class="active"><a href="index.html">Home</a></li>
+                    <li>Movies</li>
+                    <li>TV Shows</li>
+                    <li>Anime</li>
+                    <li>About</li>
+                </ul>
+            </div>
+            <div class="search-bar">
+                <input type="text" placeholder="Search..." id="search-input">
+                <ul id="search-suggestions" class="search-suggestions">
+                </ul>
+            </div>
+            <div class="menu-toggle" id="menu-toggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+    <section class="container">
+    </section>
+    <!-- <div class="btn-more">
+        <button id="btn-more">More</button>
+    </div> -->
+    <div class="btn-toTop">
+        <button id="btn-toTop" style="transform: rotate(270deg);">></button>
+    </div>
+    <script src="https://unpkg.com/incremental-dom/dist/incremental-dom.js"></script>
+    <script src="loadMovie.js"></script>
+</body>
+
+</html>
