@@ -37,7 +37,6 @@ const imgBaseUrl = 'https://img.ophim.live/uploads/movies/';
 self.addEventListener('fetch', event => {
     const url = event.request.url;
 
-    // Cache API danh sách phim khi offline
     if (url.startsWith(apiList)) {
         event.respondWith(
             fetch(event.request)
@@ -53,7 +52,6 @@ self.addEventListener('fetch', event => {
                 })
         );
     }
-    // Chỉ sử dụng cache cho API chi tiết phim, không tự động cache
     else if (url.startsWith(apiDetail)) {
         event.respondWith(
             caches.match(event.request)
@@ -65,7 +63,6 @@ self.addEventListener('fetch', event => {
                 })
         );
     }
-    // Cache hình ảnh
     else if (url.startsWith(imgBaseUrl)) {
         event.respondWith(
             fetch(event.request)
@@ -81,7 +78,6 @@ self.addEventListener('fetch', event => {
                 })
         );
     }
-    // Cache các file tĩnh
     else {
         event.respondWith(
             caches.match(event.request, { ignoreSearch: true })
@@ -96,11 +92,9 @@ self.addEventListener('message', event => {
         const { slug } = event.data;
         const detailUrl = `https://ophim1.com/phim/${slug}`;
 
-        // Kiểm tra xem đã cache chưa
         caches.open(API_CACHE_NAME).then(cache => {
             cache.match(detailUrl).then(existingResponse => {
                 if (!existingResponse) {
-                    // Chỉ cache nếu chưa có
                     fetch(detailUrl)
                         .then(response => {
                             if (response.ok) {

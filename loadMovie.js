@@ -1,5 +1,6 @@
 const url = 'https://ophim1.com/danh-sach/phim-moi-cap-nhat';
 const imgUrl = 'https://img.ophim.live/uploads/movies/';
+const apiDetailurl = "https://ophim1.com/phim/"
 const container = document.querySelector('.container');
 const searchInput = document.getElementById('search-input');
 const detailContainer = document.getElementById('detail-movie');
@@ -24,14 +25,24 @@ if ('serviceWorker' in navigator) {
     });
 }
 
+let webWorker;
+if (window.Worker) {
+    webWorker = new Worker('./webWorker.js');
+}
+
+webWorker.onmessage = function (event) {
+    if (event.data.type === 'MOVIES_RESULT') {
+        renderMovies(event.data.items);
+
+        totalPage = event.data.totalPages;
+    } else if (event.data.type === 'MOVIES_ERROR') {
+        console.error('Worker fetch error:', event.data.error);
+    }
+};
+
 async function fetchData(page, movieSlug = null) {
     try {
-        let apiUrl;
-        if (movieSlug) {
-            apiUrl = `https://ophim1.com/phim/${movieSlug}`;
-        } else {
-            apiUrl = `${url}?page=${page}`;
-        }
+        let apiUrl = `https://ophim1.com/phim/${movieSlug}`;
 
         const response = await fetch(apiUrl, {
             method: 'GET',
@@ -52,7 +63,6 @@ async function fetchData(page, movieSlug = null) {
 
     } catch (error) {
         console.error('Error fetching data:', error);
-        // Thử lấy từ cache nếu là trang chi tiết
         if (movieSlug) {
             try {
                 const apiCache = await caches.open('api-cache-v5');
@@ -66,41 +76,37 @@ async function fetchData(page, movieSlug = null) {
     }
 }
 
-async function loadMovie(page) {
-    const skeletons = [];
-    for (let i = 0; i < 12; i++) {
-        const div = document.createElement('div');
-        div.className = 'skeleton-container';
-        div.innerHTML = `
-            <div class="placeholder content"></div>
-            <div class="placeholder title"></div>
-        `;
-        skeletons.push(div);
-    }
-    skeletons.forEach(node => container.appendChild(node));
+function renderMovies(items) {
+    const fragment = document.createDocumentFragment();
 
-    const data = await fetchData(page);
-    if (data === null) return;
-
-    skeletons.forEach(node => node.remove());
-
-    let fragment = document.createDocumentFragment();
-    data.items.map(function (item) {
+    items.forEach(item => {
         const a = document.createElement('a');
         a.href = `detail.html?slug=${item.slug}`;
         a.className = "movie";
 
-        // Thêm event listener để cache chi tiết phim khi click
-        a.addEventListener('click', function () {
-            cacheMovieDetail(item.slug);
-            localStorage.setItem('pendingToastMovie', item.name);
+        a.addEventListener('click', function (e) {
+            e.preventDefault();
 
-            if ("Notification" in window && Notification.permission === "granted") {
-                new Notification("Phim đã được cache", {
-                    body: item.name,
-                    icon: "./asset/40MovieLogos_28-removebg-preview.png"
+            cacheMovieDetail(item.slug);
+
+            if ('caches' in window) {
+                const detailUrl = `https://ophim1.com/phim/${item.slug}`;
+
+                caches.open('api-cache-v5').then(async (cache) => {
+                    const cachedResponse = await cache.match(detailUrl);
+
+                    if (!cachedResponse && Notification.permission === "granted") {
+                        new Notification("Phim đã được cache", {
+                            body: item.name,
+                            icon: "./asset/40MovieLogos_28-removebg-preview.png"
+                        });
+                    }
                 });
             }
+
+            setTimeout(() => {
+                window.location.href = `detail.html?slug=${item.slug}`;
+            }, 500);
         });
 
         const img = document.createElement('img');
@@ -108,7 +114,7 @@ async function loadMovie(page) {
 
         const realImg = new Image();
         realImg.src = imgUrl + item.poster_url;
-        realImg.onload = function () {
+        realImg.onload = () => {
             img.src = realImg.src;
         };
 
@@ -119,8 +125,9 @@ async function loadMovie(page) {
             </div>
         `;
         a.querySelector('.movie-poster').appendChild(img);
-        fragment.append(a);
-    })
+        container.appendChild(a);
+    });
+
     container.appendChild(fragment);
 }
 
@@ -161,7 +168,6 @@ if (searchInput) {
     }, 200));
 }
 
-// Function để cache chi tiết phim
 async function cacheMovieDetail(slug) {
     if ('serviceWorker' in navigator) {
         try {
@@ -177,7 +183,6 @@ async function cacheMovieDetail(slug) {
         }
     }
 }
-
 
 async function loadDetailMovie() {
     const skeletonDiv = document.createElement('div');
@@ -201,18 +206,16 @@ async function loadDetailMovie() {
     const div = document.createElement('div');
     div.className = 'detail-container';
 
-    // Tạo ảnh ban đầu là ảnh blur
     const img = document.createElement('img');
     img.src = './asset/soft-clear-blurred-background_1034-596.avif';
     img.alt = data.movie.name;
     img.className = 'progressive-img';
 
-    // Tạo ảnh thật
     const realImg = new Image();
     realImg.src = data.movie.poster_url;
     realImg.onload = () => {
         img.src = realImg.src;
-        img.classList.add('loaded'); // để xử lý hiệu ứng
+        img.classList.add('loaded'); 
     };
 
     div.innerHTML = `
@@ -275,21 +278,14 @@ function debounce(fn, ms) {
 }
 
 if (!isDetailPage) {
-    if (window.scrollY == 0) {
-        console.time('loadMovie');
-        loadMovie(currentPage);
-        console.timeEnd('loadMovie');
-    }
+    webWorker.postMessage({ type: 'FETCH_MOVIES', page: currentPage });
+
     window.addEventListener('scroll', debounce(() => {
         if (window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 200) {
             if (currentPage < totalPage) {
-                ++currentPage;
-                console.time('loadMovie');
-                loadMovie(currentPage);
-                console.timeEnd('loadMovie');
+                currentPage++;
+                webWorker.postMessage({ type: 'FETCH_MOVIES', page: currentPage });
             }
         }
-    }, 100));
-} else {
-    loadDetailMovie();
+    }, 300));
 }
