@@ -5,20 +5,19 @@ const urlsToCache = [
     './index.html',
     './detail.html',
     './style.css',
+    './webWorker.js',
     './loadMovie.js',
     './loadMovieWithLib.js',
     './asset/40MovieLogos_28-removebg-preview.png',
     './asset/icons8-loading.gif',
     './asset/Loading_icon.gif',
 ];
-
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => cache.addAll(urlsToCache))
     );
 });
-
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(cacheNames => {
@@ -29,21 +28,20 @@ self.addEventListener('activate', event => {
         })
     );
 });
-
 const apiList = 'https://ophim1.com/danh-sach/phim-moi-cap-nhat';
 const apiDetail = 'https://ophim1.com/phim/';
 const imgBaseUrl = 'https://img.ophim.live/uploads/movies/';
-
 self.addEventListener('fetch', event => {
     const url = event.request.url;
-
     if (url.startsWith(apiList)) {
         event.respondWith(
             fetch(event.request)
                 .then(response => {
                     const resClone = response.clone();
                     caches.open(API_CACHE_NAME).then(cache => {
-                        cache.put(event.request, resClone);
+                        setTimeout(() => {
+                            cache.put(event.request, resClone);
+                        }, 5000)
                     });
                     return response;
                 })
@@ -53,23 +51,37 @@ self.addEventListener('fetch', event => {
         );
     }
     else if (url.startsWith(apiDetail)) {
+        // Nếu request từ Web Worker (header), bỏ qua và để trình duyệt tự fetch
+        if (event.request.headers.get('x-from-webworker') === 'true') {
+            return; 
+        }
+
         event.respondWith(
             caches.match(event.request)
                 .then(cachedResponse => {
-                    if (cachedResponse) {
-                        return cachedResponse;
-                    }
-                    return fetch(event.request);
+                    if (cachedResponse) return cachedResponse;
+
+                    return fetch(event.request).catch(() => {
+                        return new Response(JSON.stringify({
+                            error: "Không thể fetch chi tiết phim và không có trong cache."
+                        }), {
+                            headers: { 'Content-Type': 'application/json' },
+                            status: 504
+                        });
+                    });
                 })
         );
     }
+
     else if (url.startsWith(imgBaseUrl)) {
         event.respondWith(
             fetch(event.request)
                 .then(response => {
                     const resClone = response.clone();
                     caches.open(CACHE_NAME).then(cache => {
-                        cache.put(event.request, resClone);
+                        setTimeout(() => {
+                            cache.put(event.request, resClone);
+                        }, 5000)
                     });
                     return response;
                 })
@@ -111,3 +123,4 @@ self.addEventListener('message', event => {
         });
     }
 });
+
